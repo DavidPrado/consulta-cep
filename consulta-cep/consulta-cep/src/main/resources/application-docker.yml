@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:postgresql://postgres:5432/cobertura
+    url: jdbc:postgresql://postgres:5438/cobertura
     username: cobertura
     password: cobertura
     driver-class-name: org.postgresql.Driver
