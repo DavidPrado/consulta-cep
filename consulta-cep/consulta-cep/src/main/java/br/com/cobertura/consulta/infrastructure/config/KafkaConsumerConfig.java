@@ -1,6 +1,6 @@
 package br.com.cobertura.consulta.infrastructure.config;
 
-import br.com.cobertura.consulta.infrastructure.messaging.ConsultaRealizadaEvent;
+import br.com.cobertura.consulta.auditoria.infrastructure.kafka.ConsultaRealizadaEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;

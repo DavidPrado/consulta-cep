@@ -1,6 +1,6 @@
-package br.com.cobertura.consulta.domain.repository;
+package br.com.cobertura.consulta.auditoria.domain.repository;
 
-import br.com.cobertura.consulta.domain.model.ConsultaLog;
+import br.com.cobertura.consulta.auditoria.domain.model.ConsultaLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;

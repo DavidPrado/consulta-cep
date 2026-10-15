@@ -2,6 +2,7 @@ package br.com.cobertura.consulta.infrastructure.messaging;
 
 
 import br.com.cobertura.consulta.application.port.out.ConsultaLogPublisher;
+import br.com.cobertura.consulta.auditoria.infrastructure.kafka.ConsultaRealizadaEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

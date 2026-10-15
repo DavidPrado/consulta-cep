@@ -1,7 +1,7 @@
-package br.com.cobertura.consulta.infrastructure.messaging;
+package br.com.cobertura.consulta.auditoria.infrastructure.kafka;
 
-import br.com.cobertura.consulta.domain.model.ConsultaLog;
-import br.com.cobertura.consulta.domain.repository.ConsultaLogRepository;
+import br.com.cobertura.consulta.auditoria.domain.model.ConsultaLog;
+import br.com.cobertura.consulta.auditoria.domain.repository.ConsultaLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;

@@ -1,7 +1,7 @@
-package br.com.cobertura.consulta.interfaces.rest;
+package br.com.cobertura.consulta.auditoria.api;
 
-import br.com.cobertura.consulta.domain.model.ConsultaLog;
-import br.com.cobertura.consulta.domain.repository.ConsultaLogRepository;
+import br.com.cobertura.consulta.auditoria.domain.model.ConsultaLog;
+import br.com.cobertura.consulta.auditoria.domain.repository.ConsultaLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

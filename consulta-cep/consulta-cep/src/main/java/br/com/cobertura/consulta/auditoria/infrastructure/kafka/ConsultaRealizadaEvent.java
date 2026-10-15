@@ -1,4 +1,4 @@
-package br.com.cobertura.consulta.infrastructure.messaging;
+package br.com.cobertura.consulta.auditoria.infrastructure.kafka;
 
 import br.com.cobertura.consulta.domain.model.OrigemConsulta;
 

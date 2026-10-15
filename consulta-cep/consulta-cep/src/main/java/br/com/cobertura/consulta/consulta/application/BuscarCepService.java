@@ -12,7 +12,7 @@ import br.com.cobertura.consulta.cobertura.domain.model.UfCobertura;
 import br.com.cobertura.consulta.cobertura.domain.repository.CepAtendidoRepository;
 import br.com.cobertura.consulta.cobertura.domain.repository.UfCoberturaRepository;
 import br.com.cobertura.consulta.consulta.infrastructure.viacep.dto.ViaCepResponse;
-import br.com.cobertura.consulta.infrastructure.messaging.ConsultaRealizadaEvent;
+import br.com.cobertura.consulta.auditoria.infrastructure.kafka.ConsultaRealizadaEvent;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
