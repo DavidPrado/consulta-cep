@@ -3,6 +3,8 @@ spring:
     name: consulta-cep
   profiles:
     active: local
+  jpa:
+    open-in-view: false
 
 server:
   port: 8088
