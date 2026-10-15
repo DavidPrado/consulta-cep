@@ -1,9 +1,10 @@
 package br.com.cobertura.consulta.interfaces.rest;
 
-import br.com.cobertura.consulta.application.dto.CepAtendidoRequest;
-import br.com.cobertura.consulta.application.dto.CepAtendidoResponse;
-import br.com.cobertura.consulta.application.port.in.CadastrarCepAtendidoUseCase;
-import br.com.cobertura.consulta.application.port.in.ListarCepsAtendidosUseCase;
+import br.com.cobertura.consulta.cobertura.api.CepAtendidoController;
+import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoRequest;
+import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoResponse;
+import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarCepAtendidoUseCase;
+import br.com.cobertura.consulta.cobertura.application.port.in.ListarCepsAtendidosUseCase;
 import br.com.cobertura.consulta.domain.exception.CepDuplicadoException;
 import br.com.cobertura.consulta.domain.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;

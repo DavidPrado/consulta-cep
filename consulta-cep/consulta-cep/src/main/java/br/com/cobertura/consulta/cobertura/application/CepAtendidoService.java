@@ -1,13 +1,14 @@
-package br.com.cobertura.consulta.application.service;
+package br.com.cobertura.consulta.cobertura.application;
 
 
-import br.com.cobertura.consulta.application.dto.CepAtendidoRequest;
-import br.com.cobertura.consulta.application.dto.CepAtendidoResponse;
-import br.com.cobertura.consulta.application.port.in.CadastrarCepAtendidoUseCase;
-import br.com.cobertura.consulta.application.port.in.ListarCepsAtendidosUseCase;
+import br.com.cobertura.consulta.application.service.Sanitizador;
+import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoRequest;
+import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoResponse;
+import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarCepAtendidoUseCase;
+import br.com.cobertura.consulta.cobertura.application.port.in.ListarCepsAtendidosUseCase;
 import br.com.cobertura.consulta.domain.exception.CepDuplicadoException;
-import br.com.cobertura.consulta.domain.model.CepAtendido;
-import br.com.cobertura.consulta.domain.repository.CepAtendidoRepository;
+import br.com.cobertura.consulta.cobertura.domain.model.CepAtendido;
+import br.com.cobertura.consulta.cobertura.domain.repository.CepAtendidoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

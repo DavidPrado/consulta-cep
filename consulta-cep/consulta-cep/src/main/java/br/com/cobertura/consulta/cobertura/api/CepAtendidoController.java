@@ -1,10 +1,10 @@
-package br.com.cobertura.consulta.interfaces.rest;
+package br.com.cobertura.consulta.cobertura.api;
 
 
-import br.com.cobertura.consulta.application.dto.CepAtendidoRequest;
-import br.com.cobertura.consulta.application.dto.CepAtendidoResponse;
-import br.com.cobertura.consulta.application.port.in.CadastrarCepAtendidoUseCase;
-import br.com.cobertura.consulta.application.port.in.ListarCepsAtendidosUseCase;
+import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoRequest;
+import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoResponse;
+import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarCepAtendidoUseCase;
+import br.com.cobertura.consulta.cobertura.application.port.in.ListarCepsAtendidosUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

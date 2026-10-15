@@ -1,10 +1,10 @@
-package br.com.cobertura.consulta.interfaces.rest;
+package br.com.cobertura.consulta.cobertura.api;
 
-import br.com.cobertura.consulta.application.dto.UfCoberturaRequest;
-import br.com.cobertura.consulta.application.dto.UfCoberturaResponse;
-import br.com.cobertura.consulta.application.port.in.AtualizarUfCoberturaUseCase;
-import br.com.cobertura.consulta.application.port.in.CadastrarUfCoberturaUseCase;
-import br.com.cobertura.consulta.application.port.in.ListarUfCoberturaUseCase;
+import br.com.cobertura.consulta.cobertura.application.dto.UfCoberturaRequest;
+import br.com.cobertura.consulta.cobertura.application.dto.UfCoberturaResponse;
+import br.com.cobertura.consulta.cobertura.application.port.in.AtualizarUfCoberturaUseCase;
+import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarUfCoberturaUseCase;
+import br.com.cobertura.consulta.cobertura.application.port.in.ListarUfCoberturaUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

@@ -1,4 +1,4 @@
-package br.com.cobertura.consulta.domain.model;
+package br.com.cobertura.consulta.cobertura.domain.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

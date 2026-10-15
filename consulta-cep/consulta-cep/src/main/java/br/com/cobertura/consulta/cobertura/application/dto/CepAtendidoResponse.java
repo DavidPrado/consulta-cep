@@ -1,6 +1,6 @@
-package br.com.cobertura.consulta.application.dto;
+package br.com.cobertura.consulta.cobertura.application.dto;
 
-import br.com.cobertura.consulta.domain.model.CepAtendido;
+import br.com.cobertura.consulta.cobertura.domain.model.CepAtendido;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

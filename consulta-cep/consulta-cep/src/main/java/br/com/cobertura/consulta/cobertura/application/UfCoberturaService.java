@@ -1,14 +1,15 @@
-package br.com.cobertura.consulta.application.service;
+package br.com.cobertura.consulta.cobertura.application;
 
 
-import br.com.cobertura.consulta.application.dto.UfCoberturaRequest;
-import br.com.cobertura.consulta.application.dto.UfCoberturaResponse;
-import br.com.cobertura.consulta.application.port.in.AtualizarUfCoberturaUseCase;
-import br.com.cobertura.consulta.application.port.in.CadastrarUfCoberturaUseCase;
-import br.com.cobertura.consulta.application.port.in.ListarUfCoberturaUseCase;
+import br.com.cobertura.consulta.application.service.Sanitizador;
+import br.com.cobertura.consulta.cobertura.application.dto.UfCoberturaRequest;
+import br.com.cobertura.consulta.cobertura.application.dto.UfCoberturaResponse;
+import br.com.cobertura.consulta.cobertura.application.port.in.AtualizarUfCoberturaUseCase;
+import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarUfCoberturaUseCase;
+import br.com.cobertura.consulta.cobertura.application.port.in.ListarUfCoberturaUseCase;
 import br.com.cobertura.consulta.domain.exception.UfInvalidaException;
-import br.com.cobertura.consulta.domain.model.UfCobertura;
-import br.com.cobertura.consulta.domain.repository.UfCoberturaRepository;
+import br.com.cobertura.consulta.cobertura.domain.model.UfCobertura;
+import br.com.cobertura.consulta.cobertura.domain.repository.UfCoberturaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

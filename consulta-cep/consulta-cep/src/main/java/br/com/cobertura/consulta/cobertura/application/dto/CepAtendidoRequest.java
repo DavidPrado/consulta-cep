@@ -1,4 +1,4 @@
-package br.com.cobertura.consulta.application.dto;
+package br.com.cobertura.consulta.cobertura.application.dto;
 
 import jakarta.validation.constraints.*;
 
