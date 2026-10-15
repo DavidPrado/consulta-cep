@@ -78,4 +78,29 @@ public class GlobalExceptionHandler {
         problem.setProperty("path", request.getRequestURI());
         return problem;
     }
+
+    @ExceptionHandler(CepNaoEncontradoException.class)
+    public ProblemDetail handleCepNaoEncontrado(CepNaoEncontradoException ex, HttpServletRequest request) {
+        log.warn("CEP não encontrado: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("CEP não encontrado");
+        problem.setType(URI.create("https://api.consulta-cep/errors/cep-nao-encontrado"));
+        problem.setProperty("timestamp", LocalDateTime.now());
+        problem.setProperty("path", request.getRequestURI());
+        return problem;
+    }
+
+    @ExceptionHandler(ExternalApiException.class)
+    public ProblemDetail handleExternalApi(ExternalApiException ex, HttpServletRequest request) {
+        log.error("Erro na API externa: {}", ex.getMessage(), ex);
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_GATEWAY,
+                "Não foi possível consultar o serviço externo de CEP. Tente novamente mais tarde."
+        );
+        problem.setTitle("Erro na API externa");
+        problem.setType(URI.create("https://api.consulta-cep/errors/external-api"));
+        problem.setProperty("timestamp", LocalDateTime.now());
+        problem.setProperty("path", request.getRequestURI());
+        return problem;
+    }
 }
