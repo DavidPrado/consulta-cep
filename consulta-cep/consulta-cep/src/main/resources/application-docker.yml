@@ -2,6 +2,10 @@ server:
   port: 8080
 
 spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=5000,expireAfterWrite=10m,recordStats
   datasource:
     url: jdbc:postgresql://postgres:5432/cobertura
     username: cobertura

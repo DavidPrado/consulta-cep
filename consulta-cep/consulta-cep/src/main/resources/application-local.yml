@@ -1,4 +1,8 @@
 spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=5000,expireAfterWrite=10m,recordStats
   datasource:
     url: jdbc:postgresql://localhost:5438/cobertura
     username: cobertura

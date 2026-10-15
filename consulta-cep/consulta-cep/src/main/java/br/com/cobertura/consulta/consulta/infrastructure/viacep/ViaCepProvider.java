@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.cache.annotation.Cacheable;
 
 @Slf4j
 @Component
@@ -21,6 +22,11 @@ public class ViaCepProvider implements CepProvider {
     private final CircuitBreakerRegistry circuitBreakerRegistry;
 
     @Override
+    @Cacheable(
+            value = "viaCep",
+            key = "#cep",
+            unless = "#result == null || #result.isNaoEncontrado()"
+    )
     public ViaCepResponse buscar(String cep) {
 
         CircuitBreaker breaker = circuitBreakerRegistry.getOrCreate(BREAKER_NAME);

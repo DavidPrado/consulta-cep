@@ -5,6 +5,10 @@ spring:
     active: local
   jpa:
     open-in-view: false
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=5000,expireAfterWrite=10m,recordStats
 
 server:
   port: 8088
