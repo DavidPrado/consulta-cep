@@ -1,7 +1,7 @@
-package br.com.cobertura.consulta.interfaces.rest;
+package br.com.cobertura.consulta.consulta.api;
 
-import br.com.cobertura.consulta.application.dto.CepConsultaResponse;
-import br.com.cobertura.consulta.application.port.in.BuscarCepUseCase;
+import br.com.cobertura.consulta.consulta.application.dto.CepConsultaResponse;
+import br.com.cobertura.consulta.consulta.application.port.in.BuscarCepUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

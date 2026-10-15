@@ -1,4 +1,4 @@
-package br.com.cobertura.consulta.application.dto;
+package br.com.cobertura.consulta.consulta.application.dto;
 
 import br.com.cobertura.consulta.domain.model.OrigemConsulta;
 

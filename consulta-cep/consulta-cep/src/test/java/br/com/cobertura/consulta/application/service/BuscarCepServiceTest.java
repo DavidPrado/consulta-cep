@@ -1,6 +1,7 @@
 package br.com.cobertura.consulta.application.service;
 
-import br.com.cobertura.consulta.application.dto.CepConsultaResponse;
+import br.com.cobertura.consulta.consulta.application.BuscarCepService;
+import br.com.cobertura.consulta.consulta.application.dto.CepConsultaResponse;
 import br.com.cobertura.consulta.application.port.out.CepProvider;
 import br.com.cobertura.consulta.application.port.out.ConsultaLogPublisher;
 import br.com.cobertura.consulta.domain.exception.CepInvalidoException;
@@ -9,7 +10,7 @@ import br.com.cobertura.consulta.domain.model.OrigemConsulta;
 import br.com.cobertura.consulta.cobertura.domain.model.UfCobertura;
 import br.com.cobertura.consulta.cobertura.domain.repository.CepAtendidoRepository;
 import br.com.cobertura.consulta.cobertura.domain.repository.UfCoberturaRepository;
-import br.com.cobertura.consulta.infrastructure.client.viacep.dto.ViaCepResponse;
+import br.com.cobertura.consulta.consulta.infrastructure.viacep.dto.ViaCepResponse;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

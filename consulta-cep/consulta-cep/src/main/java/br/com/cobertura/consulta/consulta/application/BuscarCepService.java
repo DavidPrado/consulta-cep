@@ -1,7 +1,8 @@
-package br.com.cobertura.consulta.application.service;
+package br.com.cobertura.consulta.consulta.application;
 
-import br.com.cobertura.consulta.application.dto.CepConsultaResponse;
-import br.com.cobertura.consulta.application.port.in.BuscarCepUseCase;
+import br.com.cobertura.consulta.application.service.Sanitizador;
+import br.com.cobertura.consulta.consulta.application.dto.CepConsultaResponse;
+import br.com.cobertura.consulta.consulta.application.port.in.BuscarCepUseCase;
 import br.com.cobertura.consulta.application.port.out.CepProvider;
 import br.com.cobertura.consulta.application.port.out.ConsultaLogPublisher;
 import br.com.cobertura.consulta.domain.exception.CepInvalidoException;
@@ -10,7 +11,7 @@ import br.com.cobertura.consulta.domain.model.OrigemConsulta;
 import br.com.cobertura.consulta.cobertura.domain.model.UfCobertura;
 import br.com.cobertura.consulta.cobertura.domain.repository.CepAtendidoRepository;
 import br.com.cobertura.consulta.cobertura.domain.repository.UfCoberturaRepository;
-import br.com.cobertura.consulta.infrastructure.client.viacep.dto.ViaCepResponse;
+import br.com.cobertura.consulta.consulta.infrastructure.viacep.dto.ViaCepResponse;
 import br.com.cobertura.consulta.infrastructure.messaging.ConsultaRealizadaEvent;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

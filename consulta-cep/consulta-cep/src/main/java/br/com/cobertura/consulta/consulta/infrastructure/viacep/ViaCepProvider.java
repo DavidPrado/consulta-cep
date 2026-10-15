@@ -1,9 +1,8 @@
-package br.com.cobertura.consulta.infrastructure.client.viacep;
+package br.com.cobertura.consulta.consulta.infrastructure.viacep;
 
 import br.com.cobertura.consulta.application.port.out.CepProvider;
 import br.com.cobertura.consulta.domain.exception.CepNaoEncontradoException;
-import br.com.cobertura.consulta.domain.exception.ExternalApiException;
-import br.com.cobertura.consulta.infrastructure.client.viacep.dto.ViaCepResponse;
+import br.com.cobertura.consulta.consulta.infrastructure.viacep.dto.ViaCepResponse;
 import br.com.cobertura.consulta.infrastructure.resilience.CircuitBreaker;
 import br.com.cobertura.consulta.infrastructure.resilience.CircuitBreakerRegistry;
 import lombok.RequiredArgsConstructor;

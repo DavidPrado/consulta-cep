@@ -1,6 +1,7 @@
 package br.com.cobertura.consulta.infrastructure.client.viacep;
 
-import br.com.cobertura.consulta.infrastructure.client.viacep.dto.ViaCepResponse;
+import br.com.cobertura.consulta.consulta.infrastructure.viacep.ViaCepProvider;
+import br.com.cobertura.consulta.consulta.infrastructure.viacep.dto.ViaCepResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

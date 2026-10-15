@@ -1,4 +1,4 @@
-package br.com.cobertura.consulta.infrastructure.client.viacep.dto;
+package br.com.cobertura.consulta.consulta.infrastructure.viacep.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
