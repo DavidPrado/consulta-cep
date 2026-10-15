@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/ceps-atendidos")
+@RequestMapping("/api/v1/cobertura/ceps")
 @RequiredArgsConstructor
 public class CepAtendidoController {
 

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/resilience/circuit-breakers")
+@RequestMapping("/api/v1/operacoes")
 @RequiredArgsConstructor
 public class ResilienceController {
 
