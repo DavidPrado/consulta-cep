@@ -35,3 +35,12 @@ app:
   kafka:
     topics:
       consulta-log: consulta-log-topic
+
+resilience:
+  circuit-breakers:
+    viaCep:
+      sliding-window-size: 10
+      minimum-number-of-calls: 5
+      failure-rate-threshold: 50
+      wait-duration-in-open-state: 30s
+      permitted-number-of-calls-in-half-open-state: 3
