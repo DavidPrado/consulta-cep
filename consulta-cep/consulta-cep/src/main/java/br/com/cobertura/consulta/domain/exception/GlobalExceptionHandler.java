@@ -67,4 +67,15 @@ public class GlobalExceptionHandler {
         problem.setProperty("path", request.getRequestURI());
         return problem;
     }
+
+    @ExceptionHandler(UfInvalidaException.class)
+    public ProblemDetail handleUfInvalida(UfInvalidaException ex, HttpServletRequest request) {
+        log.warn("UF inválida: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("UF inválida");
+        problem.setType(URI.create("https://api.consulta-cep/errors/uf-invalida"));
+        problem.setProperty("timestamp", LocalDateTime.now());
+        problem.setProperty("path", request.getRequestURI());
+        return problem;
+    }
 }
