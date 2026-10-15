@@ -1,6 +1,6 @@
 package br.com.cobertura.consulta.auditoria.infrastructure.kafka;
 
-import br.com.cobertura.consulta.domain.model.OrigemConsulta;
+import br.com.cobertura.consulta.shared.model.OrigemConsulta;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

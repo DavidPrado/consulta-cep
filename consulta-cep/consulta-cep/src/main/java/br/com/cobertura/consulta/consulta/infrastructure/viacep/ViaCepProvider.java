@@ -1,10 +1,10 @@
 package br.com.cobertura.consulta.consulta.infrastructure.viacep;
 
-import br.com.cobertura.consulta.application.port.out.CepProvider;
-import br.com.cobertura.consulta.domain.exception.CepNaoEncontradoException;
+import br.com.cobertura.consulta.shared.port.out.CepProvider;
+import br.com.cobertura.consulta.shared.exception.CepNaoEncontradoException;
 import br.com.cobertura.consulta.consulta.infrastructure.viacep.dto.ViaCepResponse;
-import br.com.cobertura.consulta.infrastructure.resilience.CircuitBreaker;
-import br.com.cobertura.consulta.infrastructure.resilience.CircuitBreakerRegistry;
+import br.com.cobertura.consulta.shared.resilience.CircuitBreaker;
+import br.com.cobertura.consulta.shared.resilience.CircuitBreakerRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

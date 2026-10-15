@@ -1,6 +1,6 @@
 package br.com.cobertura.consulta.consulta.application.dto;
 
-import br.com.cobertura.consulta.domain.model.OrigemConsulta;
+import br.com.cobertura.consulta.shared.model.OrigemConsulta;
 
 import java.math.BigDecimal;
 

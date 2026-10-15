@@ -1,13 +1,13 @@
 package br.com.cobertura.consulta.cobertura.application;
 
 
-import br.com.cobertura.consulta.application.service.Sanitizador;
+import br.com.cobertura.consulta.shared.service.Sanitizador;
 import br.com.cobertura.consulta.cobertura.application.dto.UfCoberturaRequest;
 import br.com.cobertura.consulta.cobertura.application.dto.UfCoberturaResponse;
 import br.com.cobertura.consulta.cobertura.application.port.in.AtualizarUfCoberturaUseCase;
 import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarUfCoberturaUseCase;
 import br.com.cobertura.consulta.cobertura.application.port.in.ListarUfCoberturaUseCase;
-import br.com.cobertura.consulta.domain.exception.UfInvalidaException;
+import br.com.cobertura.consulta.shared.exception.UfInvalidaException;
 import br.com.cobertura.consulta.cobertura.domain.model.UfCobertura;
 import br.com.cobertura.consulta.cobertura.domain.repository.UfCoberturaRepository;
 import lombok.RequiredArgsConstructor;
