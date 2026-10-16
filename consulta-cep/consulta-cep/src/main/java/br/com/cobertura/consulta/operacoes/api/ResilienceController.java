@@ -1,6 +1,5 @@
 package br.com.cobertura.consulta.operacoes.api;
 
-
 import br.com.cobertura.consulta.shared.resilience.CircuitBreakerRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +16,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ResilienceController {
 
-    private final CircuitBreakerRegistry registry;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
 
-    @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> listar() {
-        var lista = registry.getAll().stream()
+    @GetMapping("/circuit-breakers")
+    public ResponseEntity<List<Map<String, Object>>> listarBreakers() {
+        var lista = circuitBreakerRegistry.getAll().stream()
                 .map(cb -> {
                     Map<String, Object> map = new LinkedHashMap<>();
                     map.put("nome", cb.getName());

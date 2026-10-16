@@ -1,6 +1,5 @@
-package br.com.cobertura.consulta.interfaces.rest;
+package br.com.cobertura.consulta.cobertura.api;
 
-import br.com.cobertura.consulta.cobertura.api.CepAtendidoController;
 import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoRequest;
 import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoResponse;
 import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarCepAtendidoUseCase;
@@ -9,7 +8,6 @@ import br.com.cobertura.consulta.shared.exception.CepDuplicadoException;
 import br.com.cobertura.consulta.shared.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -63,7 +61,7 @@ class CepAtendidoControllerTest {
 
         when(cadastrarUseCase.cadastrar(any(CepAtendidoRequest.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/ceps-atendidos")
+        mockMvc.perform(post("/api/v1/cobertura/ceps")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -78,7 +76,7 @@ class CepAtendidoControllerTest {
                 "abc", null, null, null, "SP", 2, new BigDecimal("15.90")
         );
 
-        mockMvc.perform(post("/api/v1/ceps-atendidos")
+        mockMvc.perform(post("/api/v1/cobertura/ceps")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -93,9 +91,9 @@ class CepAtendidoControllerTest {
                 "São Paulo", "SP", 2, new BigDecimal("15.90")
         );
 
-        Mockito.when(cadastrarUseCase.cadastrar(any())).thenThrow(new CepDuplicadoException("01310100"));
+        when(cadastrarUseCase.cadastrar(any())).thenThrow(new CepDuplicadoException("01310100"));
 
-        mockMvc.perform(post("/api/v1/ceps-atendidos")
+        mockMvc.perform(post("/api/v1/cobertura/ceps")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -103,7 +101,7 @@ class CepAtendidoControllerTest {
     }
 
     @Test
-    @DisplayName("GET deve retornar lista de CEPs")
+    @DisplayName("GET deve retornar lista de CEPs paginada")
     void deveListar() throws Exception {
         CepAtendidoResponse response = new CepAtendidoResponse(
                 UUID.randomUUID(), "01310100", "Avenida Paulista", "Bela Vista",
@@ -111,7 +109,6 @@ class CepAtendidoControllerTest {
         );
 
         Page<CepAtendidoResponse> page = new PageImpl<>(List.of(response));
-
         when(listarUseCase.listar(any(Pageable.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/cobertura/ceps"))
