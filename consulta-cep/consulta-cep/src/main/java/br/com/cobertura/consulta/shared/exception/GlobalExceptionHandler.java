@@ -103,4 +103,15 @@ public class GlobalExceptionHandler {
         problem.setProperty("path", request.getRequestURI());
         return problem;
     }
+
+    @ExceptionHandler(LoteNaoEncontradoException.class)
+    public ProblemDetail handleLoteNaoEncontrado(LoteNaoEncontradoException ex, HttpServletRequest request) {
+        log.warn("Lote não encontrado: {}", ex.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("Lote não encontrado");
+        problem.setType(URI.create("https://api.consulta-cep/errors/lote-nao-encontrado"));
+        problem.setProperty("timestamp", LocalDateTime.now());
+        problem.setProperty("path", request.getRequestURI());
+        return problem;
+    }
 }
