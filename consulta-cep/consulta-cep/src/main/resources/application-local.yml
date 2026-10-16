@@ -17,6 +17,10 @@ spring:
     username: cobertura
     password: cobertura
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 25
+      minimum-idle: 5
+      connection-timeout: 5000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -46,6 +50,12 @@ app:
     topics:
       consulta-log: consulta-log-topic
       cep-descoberto: cep-descoberto-topic
+  lote:
+    worker:
+      intervalo-ms: 10000
+      batch-size: 50
+      max-tentativas: 3
+      paralelismo: 20
 
 resilience:
   circuit-breakers:
