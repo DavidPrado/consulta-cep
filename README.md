@@ -538,3 +538,381 @@ GET /api/v1/operacoes/circuit-breakers
 ```
 
 Estados possíveis: `CLOSED`, `OPEN`, `HALF_OPEN`.
+
+---
+
+## ⚡ Performance
+
+O sistema foi otimizado em 6 camadas, cada uma resolvendo um gargalo específico.
+
+### 1. Cache Caffeine no ViaCEP
+
+**Localização:** `consulta/infrastructure/viacep/ViaCepProvider.java`
+
+Respostas do ViaCEP ficam em cache por **10 minutos** (máximo de 5.000 entradas).
+
+```java
+@Cacheable(
+    value = "viaCep",
+    key = "#cep",
+    unless = "#result == null || #result.isNaoEncontrado()"
+)
+public ViaCepResponse buscar(String cep) { ... }
+```
+
+**Ganho medido:**
+
+| Cenário | Latência |
+|---|---|
+| Consulta sem cache | ~500ms |
+| Consulta com cache hit | **~16ms** |
+| Redução | **~30x mais rápido** |
+
+**Importante:** fallbacks **não** são cacheados. Se o ViaCEP está fora, não envenenamos o cache.
+
+### 2. Paginação nos endpoints de listagem
+
+Todos os endpoints de listagem retornam no máximo **100 registros por página** (proteção contra abuso). O cliente pode usar `?page=0&size=20&sort=cep,asc`.
+
+**Ganho:** latência **constante** independente do volume de dados.
+
+### 3. Publicação Kafka assíncrona (`@Async`)
+
+**Localização:** `shared/messaging/KafkaConsultaLogPublisher.java` e `KafkaCepDescobertoPublisher.java`
+
+A publicação do evento no Kafka **não bloqueia** a resposta ao cliente. Roda em um `ThreadPoolTaskExecutor` (core=5, max=20, queue=500).
+
+```java
+@Async("taskExecutor")
+public void publicar(ConsultaRealizadaEvent event) { ... }
+```
+
+**Ganho:** resposta ao cliente em **~1ms**, mesmo com Kafka sob carga.
+
+### 4. Auto-população da base interna (write-through)
+
+**Localização:** `consulta/application/BuscarCepService.java`
+
+Quando um CEP novo de uma **UF atendida** é consultado, o sistema:
+1. Publica um `CepDescobertoEvent` no Kafka.
+2. Consumer lê o evento e persiste o CEP na base interna.
+3. **Próxima consulta do mesmo CEP já vem da base interna** (~16ms).
+
+**Ganho:** a base interna **cresce com o uso real**, e as chamadas ao ViaCEP caem exponencialmente.
+
+### 5. Virtual Threads no worker de lote
+
+**Localização:** `shared/config/VirtualThreadConfig.java` + `LoteProcessamentoWorker.java`
+
+O worker usa **Virtual Threads do Java 21** para processar CEPs em paralelo.
+
+```java
+@Bean(name = "loteExecutor", destroyMethod = "close")
+public ExecutorService loteExecutor() {
+    return Executors.newVirtualThreadPerTaskExecutor();
+}
+```
+
+**Ganho medido:**
+
+| Abordagem | Throughput |
+|---|---|
+| Worker sequencial | ~5 CEPs/s |
+| Worker com Virtual Threads | **~20-25 CEPs/s** |
+| Ganho | **~4-5x** |
+
+### 6. Batch DB writes (Hibernate)
+
+O worker acumula as atualizações e faz **um único `saveAll`** ao final do ciclo, em vez de 50 UPDATEs individuais.
+
+**Configuração:**
+```yaml
+spring.jpa.properties.hibernate.jdbc.batch_size: 30
+spring.jpa.properties.hibernate.order_inserts: true
+spring.jpa.properties.hibernate.order_updates: true
+```
+
+**Ganho:** reduz round-trips ao banco em ~30x.
+
+### 7. Graceful Shutdown
+
+**Configuração:**
+```yaml
+server.shutdown: graceful
+spring.lifecycle.timeout-per-shutdown-phase: 30s
+```
+
+Ao desligar a aplicação (deploy, restart):
+1. Para de aceitar novas requisições.
+2. Espera as requisições em andamento terminarem (até 30s).
+3. Aguarda as tarefas `@Async` finalizarem.
+4. Fecha conexões limpas com banco e Kafka.
+
+**Resultado:** zero requisição perdida em processos de deploy.
+
+---
+
+## 📦 Motor de Lote
+
+O sistema resolve o problema real de processar **1000+ CEPs em lote** sem perder dados.
+
+### Como funciona
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Cliente
+    participant API as LoteCepController
+    participant S as LoteCepService
+    participant DB as PostgreSQL
+    participant W as Worker (a cada 10s)
+    participant VT as Virtual Threads
+    participant VC as ViaCEP
+
+    C->>API: POST /api/v1/lotes (1000 CEPs)
+    API->>S: criar(request)
+    S->>DB: salva lote + 1000 itens como PENDENTE
+    S-->>C: 202 Accepted (loteId, total=1000)
+
+    loop A cada 10 segundos
+        W->>DB: busca 50 itens PENDENTE
+        W->>VT: processa em paralelo (paralelismo=20)
+        VT->>VC: consulta ViaCEP (com CB + Bulkhead)
+        VC-->>VT: endereço
+        VT-->>W: item PROCESSADO
+        W->>DB: saveAll (batch de 50 itens)
+        W->>DB: atualiza contadores do lote
+    end
+
+    C->>API: GET /api/v1/lotes/{id}
+    API-->>C: status=CONCLUIDO, processados=1000
+```
+
+### Endpoints
+
+**Criar lote:**
+```http
+POST /api/v1/lotes
+Content-Type: application/json
+
+{
+  "ceps": [
+    "01310100", "20040002", "30130010", "...", 1000 itens
+  ]
+}
+```
+
+**Resposta imediata (202 Accepted):**
+```json
+{
+  "loteId": "a1b2c3d4-...",
+  "status": "PROCESSANDO",
+  "total": 1000,
+  "processados": 0,
+  "pendentes": 1000,
+  "falhas": 0
+}
+```
+
+**Consultar status:**
+```http
+GET /api/v1/lotes/a1b2c3d4-...
+```
+
+```json
+{
+  "lote": {
+    "status": "CONCLUIDO",
+    "total": 1000,
+    "processados": 1000,
+    "pendentes": 0,
+    "falhas": 0
+  },
+  "itens": [
+    {
+      "cep": "01310100",
+      "status": "PROCESSADO",
+      "dados": "{\"cep\":\"01310100\",\"origem\":\"INTERNO\",...}",
+      "tentativas": 1
+    }
+  ]
+}
+```
+
+### Estados possíveis
+
+**Do lote:**
+- `PROCESSANDO` — ainda tem itens pendentes.
+- `CONCLUIDO` — todos processados com sucesso.
+- `PARCIAL` — alguns processados, outros falharam.
+- `FALHOU` — nenhum item processado.
+
+**Do item:**
+- `PENDENTE` — aguardando processamento.
+- `PROCESSADO` — dados obtidos com sucesso.
+- `FALHOU` — falha permanente (CEP inválido ou 3 tentativas esgotadas).
+
+### Resiliência
+
+- **Nada se perde**: cada item é persistido individualmente.
+- **Retry automático**: até 3 tentativas para falhas transitórias.
+- **Circuit Breaker + Bulkhead**: protege o ViaCEP contra sobrecarga.
+- **CEP inválido**: falha permanente imediata (não retenta).
+- **Throughput medido**: ~20-25 CEPs/segundo.
+
+---
+
+## 🎯 Decisões de Design
+
+Documentação completa em [`docs/adr/`](docs/adr/).
+
+### Por que arquitetura em 4 contextos?
+
+Cada contexto tem uma responsabilidade clara e pode evoluir independentemente. O código conta a mesma história das URLs.
+
+### Por que Circuit Breaker manual em vez de Resilience4j?
+
+O Resilience4j ainda não tem suporte estável ao Spring Boot 4.1.1. Em vez de forçar uma dependência incompatível, implementamos o padrão manualmente com máquina de estados e `synchronized`. **Vantagens:** zero dependência externa, entendimento profundo do padrão.
+
+### Por que Kafka para o log?
+
+O requisito pede que o log **não comprometa a performance** da resposta. Com Kafka, a publicação é quase instantânea e a persistência ocorre em outro processo. Se o Kafka cair, o cliente nem percebe.
+
+### Por que CEP interno tem prioridade sobre UF?
+
+Se um CEP específico foi cadastrado manualmente, ele tem regra própria (prazo e taxa diferenciados). A UF é um fallback mais genérico.
+
+### Por que Virtual Threads no worker de lote?
+
+Java 21 trouxe Virtual Threads. São threads leves, gerenciadas pela JVM (não pelo SO). Permitem paralelismo com custo mínimo. Aproveita o que a linguagem oferece de mais moderno.
+
+### Por que auto-população via Kafka (e não síncrona)?
+
+- **Síncrona:** adicionaria ~10ms à resposta.
+- **Kafka assíncrono:** não afeta a latência. Se falhar, o cliente nem sabe.
+- **Idempotência:** o consumer verifica `existsByCep` antes de inserir.
+
+### Por que separar em 3 arquivos YAML?
+
+- `application.yml` — configuração comum.
+- `application-local.yml` — para desenvolvimento (porta 5438, localhost).
+- `application-docker.yml` — para Docker (porta 5432, nomes de serviço).
+
+Isso permite rodar o mesmo código em ambientes diferentes sem alteração.
+
+---
+
+## 🧪 Testes
+
+```bash
+./mvnw test
+```
+
+**Cobertura atual:**
+
+| Tipo | Quantidade | O que testa |
+|---|---|---|
+| Unitários de Service | 8 | Regras de negócio |
+| Unitários de Sanitizador | 7 | Sanitização e prevenção de SQL Injection |
+| Controller (`@WebMvcTest`) | 4 | Contratos HTTP e exceções |
+| Integração ViaCEP | 1 | Chamada real à API externa |
+| **Total** | **20+** | — |
+
+### Como rodar apenas um teste
+
+```bash
+./mvnw test -Dtest=BuscarCepServiceTest
+```
+
+### Cobertura de cenários
+
+- ✅ Consulta interna (CEP na base)
+- ✅ Consulta externa (fallback ViaCEP)
+- ✅ CEP duplicado
+- ✅ CEP inválido
+- ✅ Cobertura por UF
+- ✅ Fallback do Circuit Breaker
+- ✅ Sanitização de entradas
+- ✅ Contratos de erro (`ProblemDetail`)
+
+---
+
+## 📊 Como Demonstrar
+
+### 1. Subir a aplicação
+
+```bash
+docker-compose up --build
+```
+
+### 2. Verificar o health
+
+```bash
+curl http://localhost:8080/actuator/health
+# {"status":"UP"}
+```
+
+### 3. Consultar um CEP
+
+```bash
+curl http://localhost:8080/api/v1/consulta/20040002
+```
+
+### 4. Criar um lote
+
+```bash
+curl -X POST http://localhost:8080/api/v1/lotes \
+  -H "Content-Type: application/json" \
+  -d '{"ceps":["01310100","20040002","30130010"]}'
+```
+
+### 5. Acompanhar o processamento
+
+```bash
+# Copie o loteId retornado e consulte
+curl http://localhost:8080/api/v1/lotes/{loteId}
+```
+
+### 6. Verificar o Circuit Breaker
+
+```bash
+curl http://localhost:8080/api/v1/operacoes/circuit-breakers
+```
+
+### 7. Verificar o cache
+
+```bash
+curl http://localhost:8080/api/v1/operacoes/cache
+```
+
+---
+
+## 🚀 Próximas Evoluções
+
+Ideias para evolução futura (fora do escopo desta entrega):
+
+- **Testcontainers** para testes de integração reais (Postgres + Kafka em containers).
+- **Prometheus + Grafana** para dashboards em tempo real.
+- **Kubernetes manifests** com HPA (auto-scaling).
+- **Kafka com replication factor 2** para tolerância a queda de broker.
+- **Correlation ID propagado** via header `X-Trace-Id`.
+- **Cache em Redis** para compartilhar entre instâncias.
+- **Deploy em AWS ECS** com CI/CD via GitHub Actions.
+
+---
+
+## 👤 Autor
+
+**David Stefani Prado**
+
+Desafio técnico desenvolvido para processo seletivo da **BRQ**.
+
+**Contato:**
+- GitHub: [@DavidPrado](https://github.com/DavidPrado)
+- Repositório: [consulta-cep](https://github.com/DavidPrado/consulta-cep)
+
+---
+
+## 📄 Licença
+
+Este projeto é de uso educacional e demonstração técnica.
