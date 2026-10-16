@@ -1,329 +1,296 @@
-# Consulta CEP — Sistema de Cobertura de Entrega
+# 🚚 Consulta CEP — Motor de Cobertura de Entregas
 
-API REST que consulta CEPs com **priorização interna** e **cobertura por UF**, registrando logs de consulta de forma **assíncrona via Kafka** para não comprometer a performance da resposta.
+> API REST que responde à pergunta: **"Essa loja entrega no meu CEP?"**
 
----
+Motor de consulta de cobertura de entregas para e-commerce, com priorização de base interna, fallback para API externa (ViaCEP), auditoria assíncrona via Kafka e resiliência de nível de produção.
 
-## 📋 Descrição
-
-O sistema permite:
-
-- Cadastrar **CEPs atendidos** com dados próprios (prazo e taxa).
-- Cadastrar **UFs atendidas** com prazo e taxa padrão.
-- Consultar um CEP: primeiro busca na base interna; se não encontrar, consulta a API externa **ViaCEP** e verifica se a UF é atendida.
-- Registrar cada consulta externa de forma **assíncrona** via Kafka, gravando o log no banco sem impactar a resposta ao cliente.
+[![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk)](https://openjdk.org/projects/jdk/21/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-brightgreen?logo=spring)](https://spring.io/projects/spring-boot)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?logo=postgresql)](https://www.postgresql.org/)
+[![Apache Kafka](https://img.shields.io/badge/Kafka-4.2-black?logo=apachekafka)](https://kafka.apache.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)](https://www.docker.com/)
 
 ---
 
-## 🛠 Tecnologias
+## 📖 Visão Geral
 
-| Tecnologia | Versão |
+O sistema resolve um problema real de e-commerce: **verificar se um CEP é atendido e com qual prazo/taxa**, sem depender exclusivamente de uma API externa.
+
+### Como funciona
+
+1. **Cliente final** consulta um CEP pelo endpoint público.
+2. **Motor de busca** verifica primeiro a **base interna** (CEPs que a loja já cadastrou).
+3. Se **não encontrar**, consulta a API externa **ViaCEP**.
+4. Verifica se a **UF** é atendida pela loja e retorna prazo + taxa.
+5. **Auditoria**: cada consulta externa gera um log via Kafka (assíncrono, sem afetar a resposta).
+6. **Auto-população**: CEPs descobertos de UFs atendidas são salvos na base interna automaticamente.
+
+### Por que ele é diferente
+
+| Recurso | Implementação |
 |---|---|
-| Java | 21 |
-| Spring Boot | 4.1.1 |
-| Spring Data JPA | — |
-| Spring Kafka | — |
-| PostgreSQL | 16 |
-| Apache Kafka | 7.5.0 (Confluent, KRaft) |
-| Flyway | — |
-| Docker + Docker Compose | — |
+| **Priorização interna** | Base local antes de gastar chamada externa |
+| **Resiliência** | Circuit Breaker + Bulkhead + Retry + Fallback |
+| **Performance** | Cache, paginação, `@Async`, Virtual Threads |
+| **Auto-população** | Base interna cresce com o uso real |
+| **Processamento em lote** | 1000+ CEPs com Virtual Threads, sem perder dados |
+| **Auditoria assíncrona** | Kafka para logs, sem bloquear resposta |
 
 ---
 
-## 🚀 Como rodar
+## 🛠 Stack Tecnológica
 
-### Pré-requisitos
-- Docker e Docker Compose instalados
-- Java 21 (apenas se quiser rodar localmente)
+### Backend
+- **Java 21** (Virtual Threads, Records, Pattern Matching)
+- **Spring Boot 4.1.1**
+- **Spring Data JPA** + **Hibernate 7**
+- **PostgreSQL 16**
+- **Apache Kafka 4.2** (producer + consumer)
+- **Flyway** (migrations)
+- **Caffeine** (cache em memória)
+- **Jackson 3**
 
-### Subir tudo com Docker
+### Infraestrutura
+- **Docker + Docker Compose**
+- **Kafka em modo KRaft** (sem Zookeeper)
 
-```bash
-docker-compose up --build
-```
+### Bibliotecas de suporte
+- **Lombok** (produtividade)
+- **Bean Validation** (validação)
+- **Spring Actuator** (observabilidade)
+- **SLF4J + Logback** (logs)
 
-A aplicação ficará disponível em `http://localhost:8080`.
-
-### Rodar localmente (para desenvolvimento)
-
-1. Suba apenas o Postgres e o Kafka:
-   ```bash
-   docker-compose up postgres kafka -d
-   ```
-2. Rode a aplicação:
-   ```bash
-   mvn spring-boot:run
-   ```
-3. Acesse `http://localhost:8088/actuator/health`.
-
----
-
-## 🔌 Endpoints
-
-### Cadastro de CEPs atendidos
-
-```http
-POST /api/v1/ceps-atendidos
-Content-Type: application/json
-
-{
-  "cep": "01310100",
-  "logradouro": "Avenida Paulista",
-  "bairro": "Bela Vista",
-  "cidade": "São Paulo",
-  "uf": "SP",
-  "prazoDias": 2,
-  "taxa": 15.90
-}
-```
-
-```http
-GET /api/v1/ceps-atendidos
-```
-
-### Cadastro de UFs atendidas
-
-```http
-POST /api/v1/ufs-cobertura
-Content-Type: application/json
-
-{
-  "uf": "SP",
-  "atendida": true,
-  "prazoPadrao": 3,
-  "taxaPadrao": 12.50
-}
-```
-
-```http
-PUT /api/v1/ufs-cobertura/{uf}
-```
-
-```http
-GET /api/v1/ufs-cobertura
-```
-
-### Consulta de CEP
-
-```http
-GET /api/v1/cep/{cep}
-```
-
-**Exemplo de resposta (origem interna):**
-```json
-{
-  "cep": "01310100",
-  "logradouro": "Avenida Paulista",
-  "bairro": "Bela Vista",
-  "cidade": "São Paulo",
-  "uf": "SP",
-  "origem": "INTERNO",
-  "cobertura": true,
-  "prazoDias": 2,
-  "taxa": 15.90
-}
-```
-
-**Exemplo de resposta (origem externa):**
-```json
-{
-  "cep": "20040002",
-  "logradouro": "Avenida Rio Branco",
-  "complemento": "de 156 a 296 - lado par",
-  "bairro": "Centro",
-  "cidade": "Rio de Janeiro",
-  "uf": "RJ",
-  "origem": "EXTERNO",
-  "cobertura": true,
-  "prazoDias": null,
-  "taxa": null
-}
-```
-
-### Logs de consulta
-
-```http
-GET /api/v1/logs
-```
+### Testes
+- **JUnit 5**
+- **Mockito**
+- **AssertJ**
 
 ---
 
-## 🏗 Arquitetura da Solução
+## 🏗 Arquitetura
 
-### Diagrama de Containers (C4)
+O projeto segue uma arquitetura **inspirada em DDD (Domain-Driven Design)** com **4 bounded contexts** + um módulo **shared**.
+
+### Diagrama de Contextos
 
 ```mermaid
-flowchart LR
-    U[Cliente / Postman] -->|HTTP| API[API REST - Spring Boot]
-    API -->|JPA| DB[(PostgreSQL)]
-    API -->|Producer| KAFKA[(Kafka)]
-    API -->|HTTP| VIACEP[ViaCEP API]
-    KAFKA -->|Consumer| APP[ConsultaLogConsumer]
-    APP -->|JPA| DB
+flowchart TB
+    subgraph Cliente["👤 Consumidores"]
+        C1[Cliente Final]
+        C2[Time Interno]
+        C3[Auditoria]
+        C4[DevOps]
+    end
+
+    subgraph API["🚚 Motor de Cobertura de Entregas"]
+        direction TB
+        
+        subgraph Consulta["🌐 Contexto: Consulta"]
+            A1[POST /api/v1/consulta/&#123;cep&#125;]
+        end
+        
+        subgraph Cobertura["🛠 Contexto: Cobertura"]
+            B1[CRUD /api/v1/cobertura/ceps]
+            B2[CRUD /api/v1/cobertura/ufs]
+            B3[POST /api/v1/lotes]
+        end
+        
+        subgraph Auditoria["📋 Contexto: Auditoria"]
+            D1[GET /api/v1/auditoria/logs]
+        end
+        
+        subgraph Operacoes["⚙️ Contexto: Operações"]
+            E1[GET /api/v1/operacoes/*]
+        end
+        
+        subgraph Shared["🔧 Shared"]
+            S1[Circuit Breaker]
+            S2[Bulkhead]
+            S3[Sanitizador]
+            S4[Kafka Publishers]
+        end
+    end
+
+    subgraph Infra["🗄 Infraestrutura"]
+        DB[(PostgreSQL)]
+        KF[(Kafka)]
+        VC[ViaCEP]
+    end
+
+    C1 --> A1
+    C2 --> B1 & B2 & B3
+    C3 --> D1
+    C4 --> E1
+
+    A1 --> Shared
+    B1 & B2 & B3 --> Shared
+    Shared --> DB
+    Shared --> KF
+    A1 --> VC
 ```
 
-### Fluxo de Consulta de CEP (Sequência)
+### Estrutura de Pacotes
+
+```
+src/main/java/br/com/cobertura/consulta/
+├── ConsultaCepApplication.java
+│
+├── consulta/                    # Contexto 1 — Consulta (público)
+│   ├── api/                     # CepConsultaController
+│   ├── application/             # BuscarCepService, DTOs, UseCases
+│   └── infrastructure/viacep/   # ViaCepProvider
+│
+├── cobertura/                   # Contexto 2 — Cobertura (admin)
+│   ├── api/                     # Controllers de CEP, UF, Lote
+│   ├── application/             # Services, DTOs, UseCases
+│   ├── domain/                  # Entidades + Repositórios
+│   └── infrastructure/          # Kafka consumers + worker
+│
+├── auditoria/                   # Contexto 3 — Auditoria
+│   ├── api/
+│   ├── application/
+│   ├── domain/                  # ConsultaLog
+│   └── infrastructure/kafka/    # Consumer
+│
+├── operacoes/                   # Contexto 4 — Operações
+│   └── api/                     # Resilience, Cache, Worker
+│
+└── shared/                      # Código compartilhado
+    ├── config/                  # Configs (Kafka, Async, VirtualThreads)
+    ├── exception/               # Exceptions + GlobalExceptionHandler
+    ├── messaging/               # Publishers Kafka
+    ├── model/                   # OrigemConsulta
+    ├── port/out/                # Interfaces (CepProvider, Publishers)
+    ├── resilience/              # CircuitBreaker, Bulkhead
+    └── service/                 # Sanitizador
+```
+
+### Diagrama de Fluxo — Consulta de CEP
 
 ```mermaid
 sequenceDiagram
+    autonumber
     participant U as Cliente
-    participant C as CepConsultaController
+    participant API as CepConsultaController
     participant S as BuscarCepService
     participant R as CepAtendidoRepository
-    participant P as ViaCepProvider
+    participant CB as CircuitBreaker
+    participant BH as Bulkhead
+    participant VC as ViaCEP
     participant K as Kafka
-    participant G as ConsultaLogConsumer
-    participant D as PostgreSQL
+    participant C as Consumers
 
-    U->>C: GET /api/v1/cep/{cep}
-    C->>S: buscar(cep)
+    U->>API: GET /api/v1/consulta/{cep}
+    API->>S: buscar(cep)
+    S->>S: Sanitiza + valida
     S->>R: findByCep(cep)
 
     alt CEP na base interna
         R-->>S: CepAtendido
-        S-->>C: Resposta origem=INTERNO
+        S-->>U: origem=INTERNO (rápido ~16ms)
     else CEP não encontrado
-        S->>P: buscar(cep)
-        P-->>S: ViaCepResponse
-        S->>S: verificar cobertura da UF
-        S->>K: publica ConsultaRealizadaEvent
-        S-->>C: Resposta origem=EXTERNO
-        K->>G: evento recebido
-        G->>D: INSERT consulta_log
+        S->>CB: allowRequest?
+        alt CB OPEN
+            CB-->>S: false
+            S-->>U: fallback
+        else CB CLOSED/HALF_OPEN
+            S->>BH: tryAcquire?
+            alt BH lotado
+                S-->>U: fallback
+            else BH disponível
+                S->>VC: buscar(cep)
+                VC-->>S: endereço
+                S->>K: publica ConsultaLogEvent
+                S->>K: publica CepDescobertoEvent (se UF atendida)
+                S-->>U: origem=EXTERNO + cobertura
+                K->>C: log consumer
+                K->>C: cep-descoberto consumer
+                C->>R: save (auto-popula)
+            end
+        end
     end
-
-    C-->>U: JSON
-```
-
-### Modelo de Dados (ERD)
-
-```mermaid
-erDiagram
-    CEP_ATENDIDO {
-        uuid id PK
-        varchar cep UK
-        varchar logradouro
-        varchar bairro
-        varchar cidade
-        varchar uf
-        integer prazo_dias
-        numeric taxa
-        timestamp criado_em
-        timestamp atualizado_em
-    }
-
-    UF_COBERTURA {
-        uuid id PK
-        varchar uf UK
-        boolean atendida
-        integer prazo_padrao
-        numeric taxa_padrao
-        timestamp criado_em
-        timestamp atualizado_em
-    }
-
-    CONSULTA_LOG {
-        uuid id PK
-        uuid event_id
-        varchar cep
-        varchar origem
-        varchar uf
-        boolean cobertura
-        boolean sucesso
-        jsonb payload
-        varchar erro
-        varchar trace_id
-        timestamp consultado_em
-        timestamp criado_em
-    }
-```
-
-### Fluxo Assíncrono do Log
-
-```mermaid
-sequenceDiagram
-    participant S as BuscarCepService
-    participant P as KafkaConsultaLogPublisher
-    participant K as Kafka Topic
-    participant C as ConsultaLogConsumer
-    participant DB as PostgreSQL
-
-    S->>P: publicar(event)
-    P->>K: send(consulta-log-topic)
-    Note over P: Resposta ao cliente é imediata
-    K->>C: @KafkaListener
-    C->>DB: save(ConsultaLog)
 ```
 
 ---
 
-## 🎯 Decisões de Design
+## 🚀 Como Rodar
 
-### Por que Kafka para o log?
+### Pré-requisitos
 
-O requisito pede que o log seja gravado **sem comprometer a performance da resposta**. Gravar diretamente no banco no fluxo da requisição adicionaria latência. Com Kafka, a publicação é praticamente instantânea e a persistência ocorre em outro processo.
+- **Docker** e **Docker Compose**
+- **Java 21** (apenas se for rodar localmente sem Docker)
+- **Maven** (opcional — use `mvnw`)
 
-### Por que separar `application.yml`, `application-local.yml` e `application-docker.yml`?
+### Opção 1 — Docker Compose (Recomendado)
 
-Permite que o mesmo código rode em ambientes diferentes sem alteração. O profile `local` usa `localhost`, o `docker` usa os nomes dos serviços (`postgres`, `kafka`).
+```bash
+# Clone o repositório
+git clone https://github.com/DavidPrado/consulta-cep.git
+cd consulta-cep
 
-### Por que CEP interno tem prioridade sobre cobertura de UF?
+# Suba tudo (app + PostgreSQL + Kafka)
+docker-compose up --build
+```
 
-Se um CEP específico foi cadastrado manualmente, é porque ele tem regra própria (prazo e taxa diferenciados). A cobertura por UF é um fallback mais genérico.
+A aplicação estará disponível em `http://localhost:8080`.
 
-### Por que usar interfaces (`UseCase`, `CepProvider`, `ConsultaLogPublisher`)?
+**Tempo de inicialização:** ~3 a 5 minutos na primeira execução (build do Maven).
 
-Aplicação dos princípios **SOLID**:
-- **DIP:** Controllers dependem de interfaces, não de implementações.
-- **OCP:** Podemos trocar o ViaCEP por outro provedor sem alterar o Service.
-- **ISP:** Interfaces pequenas, cada uma com uma responsabilidade.
+### Opção 2 — Rodar Localmente (Desenvolvimento)
 
----
+```bash
+# 1. Suba apenas a infraestrutura
+docker-compose up postgres kafka -d
 
-## 🔒 Segurança
+# 2. Rode a aplicação
+./mvnw spring-boot:run
 
-- **SQL Injection:** Todas as queries usam Spring Data JPA com parâmetros preparados.
-- **Sanitização:** CEP é sanitizado via regex (`\d{8}`); textos são limpos de caracteres de controle e limitados por tamanho.
-- **Tratamento de exceções:** `@RestControllerAdvice` devolve `ProblemDetail` sem expor stacktrace nem mensagens técnicas.
-- **`server.error.include-stacktrace=never`:** Configurado para nunca expor stacktrace.
-- **Usuário não-root no container:** O `Dockerfile` roda a aplicação com um usuário `app`.
+# 3. Acesse
+# http://localhost:8088/actuator/health
+```
+
+### Verificar se está funcionando
+
+```bash
+curl http://localhost:8088/actuator/health
+# {"status":"UP"}
+```
 
 ---
 
 ## 🧪 Testes
 
 ```bash
-mvn test
+./mvnw test
 ```
 
-Inclui:
-- Teste de integração do `ViaCepProvider` (consulta real ao ViaCEP).
+A suíte inclui:
+- Testes unitários dos Services
+- Testes do Sanitizador
+- Testes de Controller (`@WebMvcTest`)
+- Teste de integração do ViaCEP (`ViaCepProviderIT`)
 
 ---
 
-## 📂 Estrutura do projeto
+## 📦 Estrutura do Repositório
 
 ```
-src/main/java/br/com/cobertura/consulta/
-├── application/          # Casos de uso, DTOs e serviços
-│   ├── dto/
-│   ├── port/
-│   │   ├── in/           # Interfaces de entrada (UseCases)
-│   │   └── out/          # Interfaces de saída (CepProvider, LogPublisher)
-│   └── service/
-├── domain/               # Entidades, repositórios e exceções
-│   ├── exception/
-│   ├── model/
-│   └── repository/
-├── infrastructure/       # Implementações técnicas
-│   ├── client/viacep/
-│   ├── config/
-│   └── messaging/
-└── interfaces/rest/      # Controllers e handlers
+consulta-cep/
+├── .github/                     # GitHub Actions (futuro)
+├── docs/
+│   ├── adr/                     # Architecture Decision Records
+│   └── consulta-cep.postman_collection.json
+├── src/
+│   ├── main/
+│   │   ├── java/br/com/cobertura/consulta/
+│   │   └── resources/
+│   │       ├── application.yml
+│   │       ├── application-local.yml
+│   │       ├── application-docker.yml
+│   │       └── db/migration/
+│   └── test/
+├── docker-compose.yml
+├── Dockerfile
+├── pom.xml
+└── README.md
 ```
-
----
-
-## 👤 Autor
-
-David Stefani Prado
