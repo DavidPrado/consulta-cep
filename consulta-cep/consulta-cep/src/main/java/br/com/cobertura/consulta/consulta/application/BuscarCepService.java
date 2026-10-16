@@ -1,5 +1,7 @@
 package br.com.cobertura.consulta.consulta.application;
 
+import br.com.cobertura.consulta.shared.port.out.CepDescobertoPublisher;
+import br.com.cobertura.consulta.cobertura.infrastructure.kafka.CepDescobertoEvent;
 import br.com.cobertura.consulta.shared.service.Sanitizador;
 import br.com.cobertura.consulta.consulta.application.dto.CepConsultaResponse;
 import br.com.cobertura.consulta.consulta.application.port.in.BuscarCepUseCase;
@@ -34,6 +36,7 @@ public class BuscarCepService implements BuscarCepUseCase {
     private final ConsultaLogPublisher logPublisher;
     private final Sanitizador sanitizador;
     private final ObjectMapper objectMapper;
+    private final CepDescobertoPublisher cepDescobertoPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -56,10 +59,24 @@ public class BuscarCepService implements BuscarCepUseCase {
         log.info("CEP {} não encontrado na base interna, consultando ViaCEP", cepSanitizado);
         ViaCepResponse externo = cepProvider.buscar(cepSanitizado);
 
+        if (externo.isNaoEncontrado()) {
+            log.warn("Resposta degradada do ViaCEP para o CEP {}: serviço indisponível", cepSanitizado);
+            CepConsultaResponse response = new CepConsultaResponse(
+                    cepSanitizado, null, null, null, null, null,
+                    OrigemConsulta.EXTERNO, false, null, null
+            );
+            publicarEventoLog(response, traceId);
+            return response;
+        }
+
         boolean cobertura = verificarCoberturaUf(externo.uf());
         CepConsultaResponse response = toResponseFromExterno(externo, cobertura);
 
         publicarEventoLog(response, traceId);
+
+        if (cobertura) {
+            publicarEventoCepDescoberto(externo);
+        }
         return response;
     }
 
@@ -123,5 +140,42 @@ public class BuscarCepService implements BuscarCepUseCase {
                 null,
                 null
         );
+    }
+
+    private void publicarEventoCepDescoberto(ViaCepResponse externo) {
+        try {
+            if (externo.uf() == null || externo.cep() == null) {
+                return;
+            }
+
+            String cepLimpo = externo.cep().replaceAll("\\D", "");
+            if (cepLimpo.length() != 8) {
+                return;
+            }
+
+            var ufOpt = ufCoberturaRepository.findByUf(externo.uf().toUpperCase());
+            if (ufOpt.isEmpty() || !Boolean.TRUE.equals(ufOpt.get().getAtendida())) {
+                return;
+            }
+
+            var ufCobertura = ufOpt.get();
+
+            CepDescobertoEvent event = new CepDescobertoEvent(
+                    UUID.randomUUID(),
+                    cepLimpo,
+                    externo.logradouro(),
+                    externo.bairro(),
+                    externo.localidade(),
+                    externo.uf(),
+                    ufCobertura.getPrazoPadrao(),
+                    ufCobertura.getTaxaPadrao(),
+                    LocalDateTime.now()
+            );
+
+            cepDescobertoPublisher.publicar(event);
+            log.info("Evento de CEP descoberto publicado: {}", cepLimpo);
+        } catch (Exception ex) {
+            log.error("Falha ao publicar evento de CEP descoberto: {}", ex.getMessage(), ex);
+        }
     }
 }

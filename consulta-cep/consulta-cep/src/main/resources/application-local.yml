@@ -42,6 +42,7 @@ app:
   kafka:
     topics:
       consulta-log: consulta-log-topic
+      cep-descoberto: cep-descoberto-topic
 
 resilience:
   circuit-breakers:
