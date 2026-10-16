@@ -298,3 +298,243 @@ consulta-cep/
 ├── pom.xml
 └── README.md
 ```
+
+---
+
+## 🔌 Endpoints
+
+A API é organizada em **4 contextos**:
+
+### 🌐 Contexto Consulta (público)
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/api/v1/consulta/{cep}` | Consulta um CEP (base interna ou ViaCEP) |
+
+**Exemplo de requisição:**
+```http
+GET /api/v1/consulta/20040002
+```
+
+**Exemplo de resposta (origem externa):**
+```json
+{
+  "cep": "20040002",
+  "logradouro": "Avenida Rio Branco",
+  "complemento": "de 156 a 296 - lado par",
+  "bairro": "Centro",
+  "cidade": "Rio de Janeiro",
+  "uf": "RJ",
+  "origem": "EXTERNO",
+  "cobertura": true,
+  "prazoDias": null,
+  "taxa": null
+}
+```
+
+**Exemplo de resposta (origem interna):**
+```json
+{
+  "cep": "20040002",
+  "logradouro": "Avenida Rio Branco",
+  "bairro": "Centro",
+  "cidade": "Rio de Janeiro",
+  "uf": "RJ",
+  "origem": "INTERNO",
+  "cobertura": true,
+  "prazoDias": 5,
+  "taxa": 25.00
+}
+```
+
+---
+
+### 🛠 Contexto Cobertura (administração)
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| POST | `/api/v1/cobertura/ceps` | Cadastra CEP com dados próprios |
+| GET | `/api/v1/cobertura/ceps` | Lista CEPs atendidos (paginado) |
+| POST | `/api/v1/cobertura/ufs` | Cadastra UF atendida |
+| PUT | `/api/v1/cobertura/ufs/{uf}` | Atualiza uma UF |
+| GET | `/api/v1/cobertura/ufs` | Lista UFs atendidas |
+| POST | `/api/v1/lotes` | Cria lote de CEPs para processamento assíncrono |
+| GET | `/api/v1/lotes/{loteId}` | Consulta status do lote |
+
+**Exemplo — Cadastrar CEP atendido:**
+```http
+POST /api/v1/cobertura/ceps
+Content-Type: application/json
+
+{
+  "cep": "01310100",
+  "logradouro": "Avenida Paulista",
+  "bairro": "Bela Vista",
+  "cidade": "São Paulo",
+  "uf": "SP",
+  "prazoDias": 2,
+  "taxa": 15.90
+}
+```
+
+**Exemplo — Cadastrar UF atendida:**
+```http
+POST /api/v1/cobertura/ufs
+Content-Type: application/json
+
+{
+  "uf": "SP",
+  "atendida": true,
+  "prazoPadrao": 3,
+  "taxaPadrao": 12.50
+}
+```
+
+**Paginação (padrão Spring Data):**
+```http
+GET /api/v1/cobertura/ceps?page=0&size=20&sort=cep,asc
+```
+
+---
+
+### 📋 Contexto Auditoria
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/api/v1/auditoria/logs` | Lista logs de consultas (paginado) |
+
+---
+
+### ⚙️ Contexto Operações
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/api/v1/operacoes/circuit-breakers` | Estado atual dos Circuit Breakers |
+| GET | `/api/v1/operacoes/bulkheads` | Estado atual dos Bulkheads |
+| GET | `/api/v1/operacoes/cache` | Estatísticas do cache (hits/misses) |
+| GET | `/actuator/health` | Health check da aplicação |
+
+---
+
+## 🔄 Fluxo de Consulta Completo
+
+O fluxo da consulta de CEP é otimizado em **camadas**, na seguinte ordem:
+
+```mermaid
+flowchart TD
+    Start["Cliente consulta CEP"] --> Sanitiza["Sanitiza e valida (regex)"]
+    Sanitiza --> BaseInt{"CEP está na base interna?"}
+    BaseInt -->|Sim| RetornaInt["Retorna origem INTERNO (rápido)"]
+    BaseInt -->|Não| CB{"Circuit Breaker aberto?"}
+    CB -->|Sim| Fallback["Fallback (resposta degradada)"]
+    CB -->|Não| BH{"Bulkhead tem vaga?"}
+    BH -->|Não| Fallback
+    BH -->|Sim| ViaCEP["Chama ViaCEP (com retry 3x)"]
+    ViaCEP --> VerificaUF["Verifica cobertura da UF"]
+    VerificaUF --> PublicaLog["Publica evento de log (Kafka)"]
+    PublicaLog --> AutoPop{"UF atendida?"}
+    AutoPop -->|Sim| PublicaDesc["Publica CepDescoberto (Kafka)"]
+    AutoPop -->|Não| Retorna
+    PublicaDesc --> Retorna["Retorna resposta ao cliente"]
+    Fallback --> Fim["Fim"]
+    RetornaInt --> Fim
+    Retorna --> Fim
+```
+
+### Explicação das camadas
+
+1. **Sanitização**: remove máscara, valida formato (`\d{8}`), prevenção contra SQL Injection.
+2. **Base interna**: prioriza dados locais sobre consulta externa.
+3. **Circuit Breaker**: se o ViaCEP falhou muito, evita chamá-lo.
+4. **Bulkhead**: limita a 20 chamadas simultâneas ao ViaCEP.
+5. **Retry**: 3 tentativas com backoff exponencial (1s, 2s).
+6. **Fallback**: resposta degradada se tudo falhar.
+7. **Auto-população**: CEPs de UFs atendidas são salvos automaticamente.
+8. **Auditoria assíncrona**: Kafka grava o log em paralelo.
+
+---
+
+## 🛡 Resiliência
+
+O sistema foi projetado para **nunca travar**, mesmo com dependências externas falhando. Isso é alcançado com 4 camadas de proteção.
+
+### 1. Circuit Breaker (implementação manual)
+
+**Localização:** `shared/resilience/CircuitBreaker.java`
+
+Máquina de estados com 3 estados:
+
+| Estado | Comportamento |
+|---|---|
+| `CLOSED` | Funcionamento normal, todas as chamadas passam |
+| `OPEN` | Circuito aberto, chamadas vão direto para o fallback |
+| `HALF_OPEN` | Testa 3 chamadas para decidir se volta a `CLOSED` |
+
+**Parâmetros configurados:**
+- Janela deslizante: 10 chamadas
+- Mínimo de chamadas: 5
+- Taxa de falha para abrir: 50%
+- Tempo em `OPEN`: 30 segundos
+
+**Transições:**
+```
+CLOSED --[falhas ≥ 50%]--> OPEN
+OPEN --[passou 30s]--> HALF_OPEN
+HALF_OPEN --[3 sucessos]--> CLOSED
+HALF_OPEN --[1 falha]--> OPEN
+```
+
+### 2. Bulkhead
+
+**Localização:** `shared/resilience/Bulkhead.java`
+
+Limita o número de chamadas simultâneas ao ViaCEP.
+
+- **Max chamadas concorrentes:** 20
+- **Tempo máximo de espera:** 500ms
+- **Semáforo justo (FIFO):** sim
+
+Se 100 requisições chegarem simultaneamente, apenas 20 passam. As outras 80 esperam até 500ms. Se não conseguirem, recebem fallback rápido. **Isso evita esgotamento de threads do Tomcat.**
+
+### 3. Retry com backoff exponencial
+
+**Localização:** `consulta/infrastructure/viacep/ViaCepProvider.java`
+
+- **Tentativas:** 3
+- **Backoff:** 1s → 2s → 4s
+- **Chamadas com falha reincidente não penalizam o CB** (só a última conta).
+
+### 4. Fallback
+
+Se todas as camadas falharem, o cliente recebe:
+
+```json
+{
+  "cep": "20040002",
+  "origem": "EXTERNO",
+  "cobertura": false,
+  "logradouro": null,
+  "bairro": null,
+  "cidade": null,
+  "uf": null
+}
+```
+
+A API responde em **milissegundos** (sem esperar timeout), e o cliente sabe que os dados vieram de fallback.
+
+### Monitoramento em tempo real
+
+```http
+GET /api/v1/operacoes/circuit-breakers
+
+[
+  {
+    "nome": "viaCep",
+    "estado": "CLOSED",
+    "taxaFalha": -1.0,
+    "tamanhoJanela": 0
+  }
+]
+```
+
+Estados possíveis: `CLOSED`, `OPEN`, `HALF_OPEN`.
