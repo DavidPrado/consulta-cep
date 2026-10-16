@@ -1,3 +1,6 @@
+server:
+  shutdown: graceful
+
 spring:
   cache:
     type: caffeine
