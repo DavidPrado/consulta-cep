@@ -23,3 +23,15 @@ Cada ADR segue a estrutura:
 | [002](002-circuit-breaker-manual.md) | Circuit Breaker manual | Aceito |
 | [003](003-kafka-para-log-e-autopopulacao.md) | Kafka para log e auto-população | Aceito |
 | [004](004-virtual-threads-no-lote.md) | Virtual Threads no motor de lote | Aceito |
+
+
+### 📮 Collection do Postman
+
+O repositório inclui uma collection completa com todos os endpoints prontos:
+
+1. Abra o Postman.
+2. Clique em **Import**.
+3. Selecione o arquivo `docs/consulta-cep.postman_collection.json`.
+4. A collection **Consulta CEP** aparecerá com as requisições organizadas por contexto.
+
+As requisições incluem testes automatizados (scripts) que verificam os status HTTP e salvam automaticamente o `loteId` após criar um lote.

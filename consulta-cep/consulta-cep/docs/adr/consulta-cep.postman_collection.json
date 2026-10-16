@@ -1,0 +1,638 @@
+{
+  "info": {
+    "_postman_id": "consulta-cep-collection-001",
+    "name": "Consulta CEP — Motor de Cobertura de Entregas",
+    "description": "Collection completa da API Consulta CEP. Organizada por contexto: Consulta, Cobertura, Auditoria e Operações.\n\n## Como usar\n\n1. Suba a aplicação com `docker-compose up --build` (porta 8080) ou `mvn spring-boot:run` (porta 8088).\n2. A variável `baseUrl` está configurada para `http://localhost:8088` (execução local).\n3. Se estiver rodando via Docker, mude para `http://localhost:8080`.\n4. Execute as requisições na ordem sugerida para testar o fluxo completo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8088",
+      "type": "string"
+    },
+    {
+      "key": "loteId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🌐 1. Consulta (público)",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Verifica se a aplicação está no ar."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar CEP (pode ser interno ou externo)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Contém campo origem\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.origem).to.be.oneOf([\"INTERNO\", \"EXTERNO\"]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/consulta/20040002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "consulta", "20040002"]
+            },
+            "description": "Consulta um CEP. Retorna origem=INTERNO se estiver na base, ou EXTERNO se consultou o ViaCEP."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar CEP com cobertura (RJ)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/consulta/20040002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "consulta", "20040002"]
+            },
+            "description": "Consulta um CEP do Rio de Janeiro (UF atendida)."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar CEP inválido (400)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/consulta/abc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "consulta", "abc"]
+            },
+            "description": "Testa validação de CEP inválido. Espera 400 Bad Request com ProblemDetail."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar CEP inexistente (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/consulta/99999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "consulta", "99999999"]
+            },
+            "description": "Testa CEP que não existe no ViaCEP. Espera 404 Not Found."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🛠 2. Cobertura (administração)",
+      "item": [
+        {
+          "name": "Cadastrar CEP atendido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cep\": \"01310100\",\n    \"logradouro\": \"Avenida Paulista\",\n    \"bairro\": \"Bela Vista\",\n    \"cidade\": \"São Paulo\",\n    \"uf\": \"SP\",\n    \"prazoDias\": 2,\n    \"taxa\": 15.90\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ceps",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ceps"]
+            },
+            "description": "Cadastra um CEP com dados próprios (priorizado na busca)."
+          },
+          "response": []
+        },
+        {
+          "name": "Cadastrar CEP duplicado (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cep\": \"01310100\",\n    \"logradouro\": \"Avenida Paulista\",\n    \"bairro\": \"Bela Vista\",\n    \"cidade\": \"São Paulo\",\n    \"uf\": \"SP\",\n    \"prazoDias\": 2,\n    \"taxa\": 15.90\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ceps",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ceps"]
+            },
+            "description": "Tenta cadastrar um CEP que já existe. Espera 409 Conflict."
+          },
+          "response": []
+        },
+        {
+          "name": "Cadastrar CEP inválido (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cep\": \"abc\",\n    \"uf\": \"SP\",\n    \"prazoDias\": 2,\n    \"taxa\": 15.90\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ceps",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ceps"]
+            },
+            "description": "Testa validação de CEP inválido. Espera 400 Bad Request."
+          },
+          "response": []
+        },
+        {
+          "name": "Teste de SQL Injection (bloqueado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cep\": \"01310100' OR 1=1--\",\n    \"uf\": \"SP\",\n    \"prazoDias\": 2,\n    \"taxa\": 15.90\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ceps",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ceps"]
+            },
+            "description": "Tenta SQL Injection. O regex `\\d{8}` bloqueia antes de chegar ao banco. Espera 400."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar CEPs atendidos (paginado)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ceps?page=0&size=20&sort=cep,asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ceps"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "sort", "value": "cep,asc" }
+              ]
+            },
+            "description": "Lista CEPs atendidos com paginação."
+          },
+          "response": []
+        },
+        {
+          "name": "Cadastrar UF atendida (SP)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"uf\": \"SP\",\n    \"atendida\": true,\n    \"prazoPadrao\": 3,\n    \"taxaPadrao\": 12.50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ufs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ufs"]
+            },
+            "description": "Cadastra uma UF como atendida."
+          },
+          "response": []
+        },
+        {
+          "name": "Cadastrar UF atendida (RJ)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"uf\": \"RJ\",\n    \"atendida\": true,\n    \"prazoPadrao\": 5,\n    \"taxaPadrao\": 25.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ufs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ufs"]
+            },
+            "description": "Cadastra a UF RJ como atendida."
+          },
+          "response": []
+        },
+        {
+          "name": "Atualizar UF",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"uf\": \"SP\",\n    \"atendida\": true,\n    \"prazoPadrao\": 2,\n    \"taxaPadrao\": 10.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ufs/SP",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ufs", "SP"]
+            },
+            "description": "Atualiza os dados de uma UF."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar UFs atendidas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ufs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ufs"]
+            },
+            "description": "Lista todas as UFs atendidas."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📦 3. Motor de Lote",
+      "item": [
+        {
+          "name": "Criar lote com 10 CEPs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 202\", function () { pm.response.to.have.status(202); });",
+                  "const jsonData = pm.response.json();",
+                  "if (jsonData.loteId) {",
+                  "    pm.collectionVariables.set(\"loteId\", jsonData.loteId);",
+                  "    console.log(\"LoteId salvo: \" + jsonData.loteId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ceps\": [\n        \"01310100\", \"20040002\", \"30130010\", \"70040010\", \"90010150\",\n        \"60165080\", \"80010000\", \"88010400\", \"69005040\", \"66010000\"\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lotes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "lotes"]
+            },
+            "description": "Cria um lote de CEPs. Processamento é assíncrono via worker.\nO `loteId` é salvo automaticamente na variável de coleção."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar lote com 100 CEPs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ceps\": [\n        \"01310100\",\"20040002\",\"30130010\",\"70040010\",\"90010150\",\n        \"60165080\",\"80010000\",\"88010400\",\"69005040\",\"66010000\",\n        \"01310200\",\"01310300\",\"01310400\",\"01310500\",\"01310600\",\n        \"20040003\",\"20040004\",\"20040005\",\"20040006\",\"20040007\",\n        \"30130011\",\"30130012\",\"30130013\",\"30130014\",\"30130015\",\n        \"70040011\",\"70040012\",\"70040013\",\"70040014\",\"70040015\",\n        \"90010151\",\"90010152\",\"90010153\",\"90010154\",\"90010155\",\n        \"60165081\",\"60165082\",\"60165083\",\"60165084\",\"60165085\",\n        \"80010001\",\"80010002\",\"80010003\",\"80010004\",\"80010005\",\n        \"88010401\",\"88010402\",\"88010403\",\"88010404\",\"88010405\",\n        \"69005041\",\"69005042\",\"69005043\",\"69005044\",\"69005045\",\n        \"66010001\",\"66010002\",\"66010003\",\"66010004\",\"66010005\",\n        \"01310700\",\"01310800\",\"01310900\",\"01311000\",\"01311100\",\n        \"20040008\",\"20040009\",\"20040010\",\"20040011\",\"20040012\",\n        \"30130016\",\"30130017\",\"30130018\",\"30130019\",\"30130020\",\n        \"70040016\",\"70040017\",\"70040018\",\"70040019\",\"70040020\",\n        \"90010156\",\"90010157\",\"90010158\",\"90010159\",\"90010160\",\n        \"60165086\",\"60165087\",\"60165088\",\"60165089\",\"60165090\",\n        \"80010006\",\"80010007\",\"80010008\",\"80010009\",\"80010010\",\n        \"88010406\",\"88010407\",\"88010408\",\"88010409\",\"88010410\"\n    ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lotes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "lotes"]
+            },
+            "description": "Cria um lote com 100 CEPs. Use para ver o throughput do worker."
+          },
+          "response": []
+        },
+        {
+          "name": "Criar lote com CEPs inválidos (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"ceps\": [\"abc\", \"123\", \"xyz\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lotes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "lotes"]
+            },
+            "description": "Tenta criar lote com CEPs inválidos. Espera 400."
+          },
+          "response": []
+        },
+        {
+          "name": "Consultar status do lote",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lotes/{{loteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "lotes", "{{loteId}}"]
+            },
+            "description": "Consulta o status do último lote criado. Usa a variável `loteId` que foi salva automaticamente."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📋 4. Auditoria",
+      "item": [
+        {
+          "name": "Listar logs de consulta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auditoria/logs?page=0&size=20&sort=consultadoEm,desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auditoria", "logs"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "sort", "value": "consultadoEm,desc" }
+              ]
+            },
+            "description": "Lista todos os logs de consulta. Populado de forma assíncrona via Kafka."
+          },
+          "response": []
+        },
+        {
+          "name": "Listar logs (últimos 5)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auditoria/logs?size=5&sort=consultadoEm,desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auditoria", "logs"],
+              "query": [
+                { "key": "size", "value": "5" },
+                { "key": "sort", "value": "consultadoEm,desc" }
+              ]
+            },
+            "description": "Lista os 5 logs mais recentes."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "⚙️ 5. Operações (observabilidade)",
+      "item": [
+        {
+          "name": "Estado dos Circuit Breakers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/operacoes/circuit-breakers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "operacoes", "circuit-breakers"]
+            },
+            "description": "Mostra o estado atual do Circuit Breaker do ViaCEP (CLOSED/OPEN/HALF_OPEN)."
+          },
+          "response": []
+        },
+        {
+          "name": "Estado dos Bulkheads",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/operacoes/bulkheads",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "operacoes", "bulkheads"]
+            },
+            "description": "Mostra as vagas disponíveis e chamadas ativas no Bulkhead do ViaCEP."
+          },
+          "response": []
+        },
+        {
+          "name": "Estatísticas do Cache (Caffeine)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/operacoes/cache",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "operacoes", "cache"]
+            },
+            "description": "Mostra hits, misses e hitRate do cache de consultas ao ViaCEP."
+          },
+          "response": []
+        },
+        {
+          "name": "Executar Worker de Lote (manual)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/operacoes/worker/executar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "operacoes", "worker", "executar"]
+            },
+            "description": "Força execução do worker de lote manualmente. Útil para debug."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🎬 6. Fluxo Completo (executar em ordem)",
+      "item": [
+        {
+          "name": "Etapa 1 — Cadastrar UF SP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"uf\": \"SP\",\n    \"atendida\": true,\n    \"prazoPadrao\": 3,\n    \"taxaPadrao\": 12.50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ufs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ufs"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Etapa 2 — Cadastrar CEP 01310100",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cep\": \"01310100\",\n    \"logradouro\": \"Avenida Paulista\",\n    \"bairro\": \"Bela Vista\",\n    \"cidade\": \"São Paulo\",\n    \"uf\": \"SP\",\n    \"prazoDias\": 2,\n    \"taxa\": 15.90\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cobertura/ceps",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cobertura", "ceps"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Etapa 3 — Consultar CEP interno (01310100)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/consulta/01310100",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "consulta", "01310100"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Etapa 4 — Consultar CEP externo (20040002)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/consulta/20040002",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "consulta", "20040002"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Etapa 5 — Aguarde 3s e verifique os logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auditoria/logs?size=5&sort=consultadoEm,desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auditoria", "logs"],
+              "query": [
+                { "key": "size", "value": "5" },
+                { "key": "sort", "value": "consultadoEm,desc" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Etapa 6 — Verificar Circuit Breaker",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/operacoes/circuit-breakers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "operacoes", "circuit-breakers"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Etapa 7 — Verificar Cache",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/operacoes/cache",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "operacoes", "cache"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
