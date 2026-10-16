@@ -3,6 +3,8 @@ package br.com.cobertura.consulta.auditoria.api;
 import br.com.cobertura.consulta.auditoria.domain.model.ConsultaLog;
 import br.com.cobertura.consulta.auditoria.domain.repository.ConsultaLogRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +19,7 @@ public class ConsultaLogController {
     private final ConsultaLogRepository repository;
 
     @GetMapping
-    public ResponseEntity<List<ConsultaLog>> listar() {
-        return ResponseEntity.ok(repository.findAll());
+    public ResponseEntity<Page<ConsultaLog>> listar(Pageable pageable) {
+        return ResponseEntity.ok(repository.findAll(pageable));
     }
 }

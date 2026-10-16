@@ -7,11 +7,11 @@ import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarCepAtend
 import br.com.cobertura.consulta.cobertura.application.port.in.ListarCepsAtendidosUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/cobertura/ceps")
@@ -28,7 +28,7 @@ public class CepAtendidoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CepAtendidoResponse>> listar() {
-        return ResponseEntity.ok(listarUseCase.listar());
+    public ResponseEntity<Page<CepAtendidoResponse>> listar(Pageable pageable) {
+        return ResponseEntity.ok(listarUseCase.listar(pageable));
     }
 }

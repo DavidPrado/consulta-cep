@@ -12,6 +12,8 @@ import br.com.cobertura.consulta.cobertura.domain.model.UfCobertura;
 import br.com.cobertura.consulta.cobertura.domain.repository.UfCoberturaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -74,10 +76,8 @@ public class UfCoberturaService implements CadastrarUfCoberturaUseCase, Atualiza
 
     @Override
     @Transactional(readOnly = true)
-    public List<UfCoberturaResponse> listar() {
-        return repository.findAll()
-                .stream()
-                .map(UfCoberturaResponse::fromEntity)
-                .toList();
+    public Page<UfCoberturaResponse> listar(Pageable pageable) {
+        return repository.findAll(pageable)
+                .map(UfCoberturaResponse::fromEntity);
     }
 }

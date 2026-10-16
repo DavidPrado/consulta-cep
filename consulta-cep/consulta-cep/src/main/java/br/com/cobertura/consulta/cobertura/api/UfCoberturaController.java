@@ -7,6 +7,8 @@ import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarUfCobert
 import br.com.cobertura.consulta.cobertura.application.port.in.ListarUfCoberturaUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +39,7 @@ public class UfCoberturaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<UfCoberturaResponse>> listar() {
-        return ResponseEntity.ok(listarUseCase.listar());
+    public ResponseEntity<Page<UfCoberturaResponse>> listar(Pageable pageable) {
+        return ResponseEntity.ok(listarUseCase.listar(pageable));
     }
 }

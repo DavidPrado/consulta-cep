@@ -13,6 +13,9 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -107,10 +110,12 @@ class CepAtendidoControllerTest {
                 "São Paulo", "SP", 2, new BigDecimal("15.90"), LocalDateTime.now()
         );
 
-        when(listarUseCase.listar()).thenReturn(List.of(response));
+        Page<CepAtendidoResponse> page = new PageImpl<>(List.of(response));
 
-        mockMvc.perform(get("/api/v1/ceps-atendidos"))
+        when(listarUseCase.listar(any(Pageable.class))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/cobertura/ceps"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].cep").value("01310100"));
+                .andExpect(jsonPath("$.content[0].cep").value("01310100"));
     }
 }

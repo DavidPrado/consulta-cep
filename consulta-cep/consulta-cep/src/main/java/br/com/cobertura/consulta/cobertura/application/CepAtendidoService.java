@@ -1,21 +1,22 @@
 package br.com.cobertura.consulta.cobertura.application;
 
 
-import br.com.cobertura.consulta.shared.service.Sanitizador;
 import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoRequest;
 import br.com.cobertura.consulta.cobertura.application.dto.CepAtendidoResponse;
 import br.com.cobertura.consulta.cobertura.application.port.in.CadastrarCepAtendidoUseCase;
 import br.com.cobertura.consulta.cobertura.application.port.in.ListarCepsAtendidosUseCase;
-import br.com.cobertura.consulta.shared.exception.CepDuplicadoException;
 import br.com.cobertura.consulta.cobertura.domain.model.CepAtendido;
 import br.com.cobertura.consulta.cobertura.domain.repository.CepAtendidoRepository;
+import br.com.cobertura.consulta.shared.exception.CepDuplicadoException;
+import br.com.cobertura.consulta.shared.service.Sanitizador;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -56,10 +57,8 @@ public class CepAtendidoService implements CadastrarCepAtendidoUseCase, ListarCe
 
     @Override
     @Transactional(readOnly = true)
-    public List<CepAtendidoResponse> listar() {
-        return repository.findAll()
-                .stream()
-                .map(CepAtendidoResponse::fromEntity)
-                .toList();
+    public Page<CepAtendidoResponse> listar(Pageable pageable) {
+        return repository.findAll(pageable)
+                .map(CepAtendidoResponse::fromEntity);
     }
 }
