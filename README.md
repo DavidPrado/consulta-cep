@@ -76,54 +76,58 @@ O projeto segue uma arquitetura **inspirada em DDD (Domain-Driven Design)** com 
 ```mermaid
 flowchart TB
     subgraph Cliente["👤 Consumidores"]
-        C1[Cliente Final]
-        C2[Time Interno]
-        C3[Auditoria]
-        C4[DevOps]
+        C1["Cliente Final"]
+        C2["Time Interno"]
+        C3["Auditoria"]
+        C4["DevOps"]
     end
 
     subgraph API["🚚 Motor de Cobertura de Entregas"]
         direction TB
         
         subgraph Consulta["🌐 Contexto: Consulta"]
-            A1[POST /api/v1/consulta/&#123;cep&#125;]
+            A1["GET /api/v1/consulta/:cep"]
         end
         
         subgraph Cobertura["🛠 Contexto: Cobertura"]
-            B1[CRUD /api/v1/cobertura/ceps]
-            B2[CRUD /api/v1/cobertura/ufs]
-            B3[POST /api/v1/lotes]
+            B1["CRUD /api/v1/cobertura/ceps"]
+            B2["CRUD /api/v1/cobertura/ufs"]
+            B3["POST /api/v1/lotes"]
         end
         
         subgraph Auditoria["📋 Contexto: Auditoria"]
-            D1[GET /api/v1/auditoria/logs]
+            D1["GET /api/v1/auditoria/logs"]
         end
         
         subgraph Operacoes["⚙️ Contexto: Operações"]
-            E1[GET /api/v1/operacoes/*]
+            E1["GET /api/v1/operacoes/*"]
         end
         
         subgraph Shared["🔧 Shared"]
-            S1[Circuit Breaker]
-            S2[Bulkhead]
-            S3[Sanitizador]
-            S4[Kafka Publishers]
+            S1["Circuit Breaker"]
+            S2["Bulkhead"]
+            S3["Sanitizador"]
+            S4["Kafka Publishers"]
         end
     end
 
     subgraph Infra["🗄 Infraestrutura"]
-        DB[(PostgreSQL)]
-        KF[(Kafka)]
-        VC[ViaCEP]
+        DB[("PostgreSQL")]
+        KF[("Kafka")]
+        VC["ViaCEP"]
     end
 
     C1 --> A1
-    C2 --> B1 & B2 & B3
+    C2 --> B1
+    C2 --> B2
+    C2 --> B3
     C3 --> D1
     C4 --> E1
 
     A1 --> Shared
-    B1 & B2 & B3 --> Shared
+    B1 --> Shared
+    B2 --> Shared
+    B3 --> Shared
     Shared --> DB
     Shared --> KF
     A1 --> VC
